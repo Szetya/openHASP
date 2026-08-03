@@ -114,6 +114,19 @@ IRAM_ATTR void gui_flush_cb(lv_disp_drv_t* disp, const lv_area_t* area, lv_color
     screenshotIsDirty = true;
 }
 
+#if defined(RM690B0_DRIVER) || defined(LILYGO_T4_S3)
+void gui_rounder_cb(lv_disp_drv_t* disp_drv, lv_area_t* area)
+{
+    area->x1 = area->x1 & ~1; // Round down start X to even
+    area->x2 = area->x2 | 1;  // Round up end X to odd (width = x2 - x1 + 1 = even)
+    area->y1 = area->y1 & ~1; // Round down start Y to even
+    area->y2 = area->y2 | 1;  // Round up end Y to odd (height = y2 - y1 + 1 = even)
+
+    if(area->x2 >= disp_drv->hor_res) area->x2 = disp_drv->hor_res - 1;
+    if(area->y2 >= disp_drv->ver_res) area->y2 = disp_drv->ver_res - 1;
+}
+#endif
+
 void gui_antiburn_cb(lv_disp_drv_t* disp, const lv_area_t* area, lv_color_t* color_p)
 {
     /*  uint32_t w   = (area->x2 - area->x1 + 1);
@@ -242,6 +255,9 @@ void guiSetup()
     lv_disp_drv_init(&disp_drv);
     disp_drv.buffer   = &disp_buf;
     disp_drv.flush_cb = gui_flush_cb;
+#if defined(RM690B0_DRIVER) || defined(LILYGO_T4_S3)
+    disp_drv.rounder_cb = gui_rounder_cb;
+#endif
 
     if(gui_settings.rotation % 2) {
         disp_drv.hor_res = tft_height;
@@ -287,6 +303,9 @@ void guiSetup()
     lv_disp_drv_init(&disp_drv);
     disp_drv.buffer    = &disp_buf;
     disp_drv.flush_cb  = gui_flush_cb;
+#if defined(RM690B0_DRIVER) || defined(LILYGO_T4_S3)
+    disp_drv.rounder_cb = gui_rounder_cb;
+#endif
     disp_drv.hor_res   = tft_width;
     disp_drv.ver_res   = tft_height;
 
