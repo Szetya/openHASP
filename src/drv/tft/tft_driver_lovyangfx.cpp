@@ -1385,6 +1385,41 @@ void LovyanGfx::set_invert(bool invert)
     tft.invertDisplay(invert);
 }
 
+void LovyanGfx::restore_analog_touch_pins()
+{
+#if defined(CONFIG_IDF_TARGET_ESP32S3) && (TOUCH_DRIVER == 0x0ADC)
+    auto panel = tft.getPanel();
+    if(!panel || !panel->getBus() || panel->getBus()->busType() != lgfx::v1::bus_parallel8) return;
+
+    auto cfg = ((lgfx::Bus_Parallel8*)panel->getBus())->config();
+    const int8_t touch_pins[] = {TFT_D6, TFT_DC, TFT_WR, TFT_D7};
+
+    for(int8_t pin : touch_pins) {
+        if(pin == cfg.pin_rs) {
+            gpio_matrix_out(pin, LCD_DC_IDX, false, false);
+        } else if(pin == cfg.pin_wr) {
+            gpio_matrix_out(pin, LCD_PCLK_IDX, false, false);
+        } else if(pin == cfg.pin_d0) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX, false, false);
+        } else if(pin == cfg.pin_d1) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 1, false, false);
+        } else if(pin == cfg.pin_d2) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 2, false, false);
+        } else if(pin == cfg.pin_d3) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 3, false, false);
+        } else if(pin == cfg.pin_d4) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 4, false, false);
+        } else if(pin == cfg.pin_d5) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 5, false, false);
+        } else if(pin == cfg.pin_d6) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 6, false, false);
+        } else if(pin == cfg.pin_d7) {
+            gpio_matrix_out(pin, LCD_DATA_OUT0_IDX + 7, false, false);
+        }
+    }
+#endif
+}
+
 /* Update TFT */
 void IRAM_ATTR LovyanGfx::flush_pixels(lv_disp_drv_t* disp, const lv_area_t* area, lv_color_t* color_p)
 {
@@ -1392,10 +1427,15 @@ void IRAM_ATTR LovyanGfx::flush_pixels(lv_disp_drv_t* disp, const lv_area_t* are
     uint32_t h   = (area->y2 - area->y1 + 1);
     uint32_t len = w * h;
 
-    tft.startWrite();                                        /* Start new TFT transaction */
+    tft.startWrite(); /* Start new TFT transaction */
+#if defined(ILI9486_DRIVER)
+    tft.setWindow(area->x1, area->y1, area->x2, area->y2);
+    tft.writePixels((const uint16_t*)&color_p->full, len, true);
+#else
     tft.setAddrWindow(area->x1, area->y1, w, h);             /* set the working window */
     tft.writePixels((lgfx::rgb565_t*)&color_p->full, w * h); /* Write words at once */
-    tft.endWrite();                                          /* terminate TFT transaction */
+#endif
+    tft.endWrite(); /* terminate TFT transaction */
 
     /* Tell lvgl that flushing is done */
     lv_disp_flush_ready(disp);
